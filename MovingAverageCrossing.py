@@ -8,7 +8,7 @@ class MovingAverageCrossing:
         self.longAverage = MovingAverageStreamer(longPeriod)
         self.longPeriod = longPeriod
         self.trend = False  #False: downtrend; True: uptrend#
-        self.lastValue = (True, True)
+        self.lastValue = (False, True)
 
     def setup(self, initialData):
         if len(initialData) < min(self.shortPeriod, self.longPeriod):
@@ -30,6 +30,7 @@ class MovingAverageCrossing:
             trend = self.trend
             reversal = False
 
+        self.trend = trend
         self.lastValue = (trend, reversal)
 
     def onData(self, data):
