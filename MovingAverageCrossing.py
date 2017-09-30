@@ -1,4 +1,4 @@
-import MovingAverageStreamer
+from MovingAverageStreamer import MovingAverageStreamer
 
 class MovingAverageCrossing:
     def __init__(self, shortPeriod, longPeriod):
