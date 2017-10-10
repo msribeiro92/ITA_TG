@@ -1,7 +1,10 @@
 from sklearn.neural_network import MLPClassifier
 import numpy as np
 
+from random import randint
+
 from MovingAverageCrossing import MovingAverageCrossing
+from TrendChecker import TrendChecker
 
 class IntelligentMovingAverageCrossing:
 
@@ -9,16 +12,24 @@ class IntelligentMovingAverageCrossing:
         mac1 = MovingAverageCrossing(5, 20)
         mac2 = MovingAverageCrossing(10, 20)
         mac3 = MovingAverageCrossing(5, 10)
+        mac4 = MovingAverageCrossing(7, 20)
+        mac5 = MovingAverageCrossing(14, 20)
+        mac6 = MovingAverageCrossing(7, 10)
+        mac7 = MovingAverageCrossing(7, 30)
+        mac8 = MovingAverageCrossing(14, 30)
+        mac9 = MovingAverageCrossing(7, 40)
         self.neuralNetwork = MLPClassifier(
+            activation='relu',
             solver='lbfgs',
             alpha=1e-5,
-            hidden_layer_sizes=(5,),
+            hidden_layer_sizes=(10, 10),
             random_state=1
         )
 
-        self.features = [mac1, mac2, mac3]
+        self.features = [mac1, mac2, mac3, mac4, mac5, mac6, mac7, mac8, mac9]
         self.trend = False
         self.lastValue = (False, True)
+        self.trendLength = 1
 
 
     def setup(self, initialData, trainingData):
@@ -34,41 +45,21 @@ class IntelligentMovingAverageCrossing:
         for f in self.features:
             f.setup(initialData)
 
-        # Train
-        X = []
+        # train
+        trend = TrendChecker()
         for data in trainingData:
-            x_i = []
-            for f in self.features:
-                x_i.append(f.onData(data)[0])
-            X.append(x_i)
+            X = []
+            for data in trainingData:
+                x_i = []
+                for f in self.features:
+                    x_i.append(f.onData(data)[0])
+                X.append(x_i)
+            X = np.array(X[1:])
 
-        y = []
-        for x_i in X:
-            trendCount = 0
-            for i in x_i:
-                if i > 0:
-                    trendCount += 1
-                else:
-                    trendCount -=1
-            trend = trendCount > 0
-            y.append(trend)
+            y = trend.identifyAllTrends(np.array(trainingData))
+            y = np.array(y)
 
-        X = np.array(X)
-        y = np.array(y)
-        self.neuralNetwork.fit(X, y)
-
-        lastTrends = []
-        for f in self.features:
-            lastTrends.append(f.trend)
-        trendCount = 0
-        for i in lastTrends:
-            if i > 0:
-                trendCount += 1
-            else:
-                trendCount -=1
-        trend = trendCount > 0
-        self.trend = trend
-        self.lastValue = (trend, True)
+            self.neuralNetwork.fit(X, y)
 
     def onData(self, data):
         featuresData = []

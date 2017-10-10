@@ -23,6 +23,36 @@ class TrendChecker:
 
         return float(contRightPredictions) / contReversals
 
+    def checkTrendNoReversal(self, rawData, trendPrediction):
+        if len(rawData)-1 != len(trendPrediction):
+            raise(ValueError("Raw data and prediction have diferent sizes"))
+
+        trends = self.identifyAllTrends(rawData)
+        cont = 0
+        for i in range(len(trends)):
+            if trends[i] == trendPrediction[i][0]:
+                cont += 1
+
+        return float(cont) / len(trends)
+
+    def checkSingleTrend(self, trendData, prediction):
+        return (trendData[len(trendData-1)] > trendData[0]) == prediction
+
+    def identifyTrend(self, trendData):
+        return trendData[len(trendData)-1] > trendData[0]
+
+    def identifyAllTrends(self, trendData):
+        trends = []
+        lastData = trendData[0]
+        for i in range(len(trendData)-1):
+            previousData = trendData[i]
+            currentData = trendData[i+1]
+            trend = currentData > previousData
+            trends.append(trend)
+
+        return trends
+
+
     def checkPNL(self):
         # TO DO
         return

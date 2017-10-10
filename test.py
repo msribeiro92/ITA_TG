@@ -50,7 +50,7 @@ class Test:
             shortAverageArray.append(shortAverage.onData(data))
 
         trend = TrendChecker()
-        print(trend.checkTrend(list(dataArray[longPeriod-1:]), predictionArray))
+        print(trend.checkTrendNoReversal(list(dataArray[longPeriod-1:]), predictionArray[1:]))
 
         #plt.plot(range(len(dataArray)-longPeriod+1), dataArray[longPeriod-1:])
         #plt.plot(longAverageArray, 'g')
@@ -59,12 +59,13 @@ class Test:
 
     def testIntelligentMovingAverageCrossing(self, flip):
         dataArray = self.dataFrame["Close"]
-        trainingIndex = 400 # 100, 170, 180, 190. 200, 210, 220, 400
+        initializationIndex = 40
+        trainingIndex = 600 # 100, 170, 180, 190. 200, 210, 220, 400
 
         intelligentMovingAverageCrossing = IntelligentMovingAverageCrossing()
         intelligentMovingAverageCrossing.setup(
-            dataArray[:20],
-            dataArray[20:trainingIndex]
+            dataArray[:initializationIndex],
+            dataArray[initializationIndex:trainingIndex]
         )
 
         if flip:
@@ -80,7 +81,7 @@ class Test:
             )
 
         trend = TrendChecker()
-        print(trend.checkTrend(list(dataArray[trainingIndex-1:]), predictionArray))
+        print(trend.checkTrendNoReversal(list(dataArray[trainingIndex-1:]), predictionArray[1:]))
 
 test = Test()
 #test.testSampleData()
@@ -88,5 +89,11 @@ test = Test()
 test.testTrendChecker(5, 20)
 test.testTrendChecker(10, 20)
 test.testTrendChecker(5, 10)
+test.testTrendChecker(7, 20)
+test.testTrendChecker(14, 20)
+test.testTrendChecker(7, 10)
+test.testTrendChecker(7, 30)
+test.testTrendChecker(14, 30)
+test.testTrendChecker(7, 40)
 test.testIntelligentMovingAverageCrossing(False)
-test.testIntelligentMovingAverageCrossing(True)
+#test.testIntelligentMovingAverageCrossing(True)
