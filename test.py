@@ -2,6 +2,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from os import listdir
+from os.path import isfile, join
+import time
+
 from MovingAverageStreamer import MovingAverageStreamer
 from MovingAverageCrossing import MovingAverageCrossing
 from IntelligentMovingAverageCrossing import IntelligentMovingAverageCrossing
@@ -9,11 +13,12 @@ from TrendChecker import TrendChecker
 
 class Test:
 
-    def __init__(self):
-        self.dataFrame =  pd.read_csv('/home/marcel/TG/individual_stocks_5yr/AAPL_data.csv')
+    def __init__(self, fileName):
+        self.dataFrame =  pd.read_csv('/home/marcel/TG/individual_stocks_5yr/' + fileName)
 
-    def testSampleData(self):
-        self.dataFrame["Close"].plot()
+    def testSampleData(self, fileName):
+        dataFrame = self.dataFrame =  pd.read_csv('/home/marcel/TG/individual_stocks_5yr/' + fileName)
+        dataFrame["Close"].plot()
         plt.show()
 
     def testMovingAverageStremer(self):
@@ -50,29 +55,39 @@ class Test:
             shortAverageArray.append(shortAverage.onData(data))
 
         trend = TrendChecker()
-        print(trend.checkTrendNoReversal(list(dataArray[longPeriod-1:]), predictionArray[1:]))
-
-        #plt.plot(range(len(dataArray)-longPeriod+1), dataArray[longPeriod-1:])
-        #plt.plot(longAverageArray, 'g')
-        #plt.plot(shortAverageArray, 'r')
-        #plt.show()
-
-    def testIntelligentMovingAverageCrossing(self, flip):
-        dataArray = self.dataFrame["Close"]
-        initializationIndex = 40
-        trainingIndex = 600 # 100, 170, 180, 190. 200, 210, 220, 400
-
-        intelligentMovingAverageCrossing = IntelligentMovingAverageCrossing()
-        intelligentMovingAverageCrossing.setup(
-            dataArray[:initializationIndex],
-            dataArray[initializationIndex:trainingIndex]
+        return (
+            trend.checkTrendNoReversal(
+                list(dataArray[longPeriod-1:]),
+                predictionArray[1:]
+            ),
+            trend.checkPNL(
+                list(dataArray[longPeriod-1:]),
+                predictionArray[1:]
+            )
         )
 
-        if flip:
-            trend = intelligentMovingAverageCrossing.trend
-            intelligentMovingAverageCrossing.trend = not trend
-            #lv = intelligentMovingAverageCrossing.lastValue
-            #intelligentMovingAverageCrossing.lastValue = (not lv[0], lv[1])
+    def testIntelligentMovingAverageCrossing(self, featureSelection=False):
+        dataArray = self.dataFrame["Close"]
+        initializationIndex = 20
+        trainingIndex = 300 # 100, 170, 180, 190. 200, 210, 220, 400
+        initialData = dataArray[:initializationIndex]
+        trainingData = dataArray[initializationIndex:trainingIndex]
+
+        if featureSelection:
+            intelligentMovingAverageCrossing = \
+                IntelligentMovingAverageCrossing(
+                    featureSelection=True,
+                    initialData=initialData,
+                    trainingData=trainingData
+                )
+        else:
+            intelligentMovingAverageCrossing = \
+                IntelligentMovingAverageCrossing()
+
+        intelligentMovingAverageCrossing.setup(
+            initialData,
+            trainingData
+        )
 
         predictionArray = [intelligentMovingAverageCrossing.lastValue]
         for data in dataArray[trainingIndex:]:
@@ -81,19 +96,66 @@ class Test:
             )
 
         trend = TrendChecker()
-        print(trend.checkTrendNoReversal(list(dataArray[trainingIndex-1:]), predictionArray[1:]))
+        return (
+            trend.checkTrendNoReversal(
+                list(dataArray[trainingIndex-1:]),
+                predictionArray[1:]
+            ),
+            trend.checkPNL(
+                list(dataArray[trainingIndex-1:]),
+                predictionArray[1:]
+            )
+        )
 
-test = Test()
-#test.testSampleData()
+    def testFeatureSelection(self):
+        print test.testTrendChecker(5, 20)
+        print test.testTrendChecker(10, 20)
+        print test.testTrendChecker(5, 10)
+        print test.testTrendChecker(7, 20)
+        print test.testTrendChecker(14, 20)
+        print test.testTrendChecker(7, 10)
+        print test.testTrendChecker(7, 30)
+        print test.testTrendChecker(14, 30)
+        print test.testTrendChecker(7, 40)
+        print "no fs", test.testIntelligentMovingAverageCrossing()
+        print "fs", test.testIntelligentMovingAverageCrossing(
+            featureSelection=True)
+
+#test = Test("AAPL_data.csv")
+#test.testSampleData("IBM_data.csv")
 #test.testMovingAverageStremer()
-test.testTrendChecker(5, 20)
-test.testTrendChecker(10, 20)
-test.testTrendChecker(5, 10)
-test.testTrendChecker(7, 20)
-test.testTrendChecker(14, 20)
-test.testTrendChecker(7, 10)
-test.testTrendChecker(7, 30)
-test.testTrendChecker(14, 30)
-test.testTrendChecker(7, 40)
-test.testIntelligentMovingAverageCrossing(False)
-#test.testIntelligentMovingAverageCrossing(True)
+#print test.testIntelligentMovingAverageCrossing()
+#test.testFeatureSelection()
+
+start_time = time.time()
+
+mypath = '/home/marcel/TG/individual_stocks_5yr/'
+onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+better = []
+worse = []
+for f in onlyfiles:
+    test = Test(f)
+    try:
+        r1 = test.testTrendChecker(5, 20)
+        r2 = test.testTrendChecker(10, 20)
+        r3 = test.testTrendChecker(5, 10)
+        best = max([ r1[1], r2[1], r3[1] ])
+
+        r4 = test.testIntelligentMovingAverageCrossing(featureSelection=True)
+        if r4[1] > best:
+            better.append((f, r1, r2, r3, r4))
+        else:
+            worse.append((f, r1, r2, r3, r4))
+    except:
+        continue
+
+print("Better: " + str(len(better)))
+print("Worse: " + str(len(worse)))
+print("Better:")
+for r in better:
+    print(r)
+print("Worse:")
+for r in worse:
+    print(r)
+
+print("--- %s seconds ---" % (time.time() - start_time))

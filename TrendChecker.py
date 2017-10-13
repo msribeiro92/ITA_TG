@@ -52,7 +52,37 @@ class TrendChecker:
 
         return trends
 
+    def checkPNL(self, rawData, trendPrediction):
+        if len(rawData)-1 != len(trendPrediction):
+            raise(ValueError("Raw data and prediction have diferent sizes"))
 
-    def checkPNL(self):
-        # TO DO
-        return
+        position = None
+        pnl = 0
+
+        for i in range(len(trendPrediction)-2): # trades at at most one from the last
+            data = trendPrediction[i]
+
+            if data[1]:
+                if position is None:
+                    if data[0]:         # uptrend: buy
+                        pnl -= rawData[i+2]
+                        position = "long"
+                    else:              # downtrend: sell
+                        pnl += rawData[i+2]
+                        position = "short"
+                elif position == "long":
+                    if not data[0]:    # downtrend: sell
+                        pnl += rawData[i+2]
+                        position = None
+                else:                  # position == short
+                    if data[0]:        # uptrend: buy
+                        pnl -= rawData[i+2]
+                        position = None
+
+        # close opened position
+        if position == "long":
+            pnl += rawData[-1]
+        elif position == "short":
+            pnl -= rawData[-1]
+
+        return pnl
