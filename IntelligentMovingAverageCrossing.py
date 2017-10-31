@@ -9,30 +9,30 @@ from FeatureSelection import FeatureSelection
 
 class IntelligentMovingAverageCrossing:
 
-    def __init__(self, featureSelection=False, initialData=[], trainingData=[]):
-        """
-        mac1 = MovingAverageCrossing(5, 20)
-        mac2 = MovingAverageCrossing(10, 20)
-        mac3 = MovingAverageCrossing(5, 10)
-        mac4 = MovingAverageCrossing(7, 20)
-        mac5 = MovingAverageCrossing(14, 20)
-        mac6 = MovingAverageCrossing(7, 10)
-        mac7 = MovingAverageCrossing(7, 30)
-        mac8 = MovingAverageCrossing(14, 30)
-        mac9 = MovingAverageCrossing(7, 40)
-        """
+    def __init__(
+        self,
+        featureSelection=False,
+        nFeatures=3,
+        nOutputs=1,
+        architecture=(15,15),
+        initialData=[],
+        trainingData=[]
+    ):
+
         self.neuralNetwork = MLPClassifier(
             activation='relu',
             solver='lbfgs',
             alpha=1e-4,
-            hidden_layer_sizes=(10),
+            hidden_layer_sizes=architecture,
             random_state=1
         )
 
         if featureSelection:
             fs = FeatureSelection()
-            self.features = fs.generateFeatures(3, initialData, trainingData)
+            self.features = fs.generateFeatures(nFeatures, initialData, trainingData)
         else:
+            if nFeatures > 9:
+                raise(ValueError("MaxFeature == 9 when featureSelection == False"))
             mac1 = MovingAverageCrossing(5, 20)
             mac2 = MovingAverageCrossing(10, 20)
             mac3 = MovingAverageCrossing(5, 10)
@@ -42,18 +42,19 @@ class IntelligentMovingAverageCrossing:
             mac7 = MovingAverageCrossing(7, 30)
             mac8 = MovingAverageCrossing(14, 30)
             mac9 = MovingAverageCrossing(7, 40)
-            self.features = [mac1, mac2, mac3, mac4, mac5, mac6, mac7, mac8, mac9]
+            features = [mac1, mac2, mac3, mac4, mac5, mac6, mac7, mac8, mac9]
+            self.features = features[:nFeatures]
 
         self.trend = False
         self.lastValue = (False, True)
-        self.trendLength = 1
 
+        self.nOutputs = nOutputs
         self.trendChecker = TrendChecker()
-        self.lastData = None
 
     def setup(self, initialData, trainingData):
         # Setup
         longPeriods = []
+
         for f in self.features:
             longPeriods.append(f.longPeriod)
         longestPeriod = max(longPeriods)
@@ -64,7 +65,7 @@ class IntelligentMovingAverageCrossing:
         for f in self.features:
             f.setup(initialData)
 
-        # train
+        # train prediction
         for data in trainingData:
             X = []
             for data in trainingData:
@@ -74,10 +75,15 @@ class IntelligentMovingAverageCrossing:
                 X.append(x_i)
             X = np.array(X[1:])
 
+        if self.nOutputs == 2:
+            y = []
+            y.append(self.trendChecker.identifyAllTrends(np.array(trainingData)))
+            y.append(self.trendChecker.identifyAllReversions(np.array(trainingData)))
+            y = np.matrix(y)
+            y = y.getT()
+        else:
             y = self.trendChecker.identifyAllTrends(np.array(trainingData))
-            y = np.array(y)
-
-            self.neuralNetwork.fit(X, y)
+        self.neuralNetwork.fit(X, y)
 
     def onData(self, data, onlineLearning=False):
         featuresData = []
@@ -86,16 +92,13 @@ class IntelligentMovingAverageCrossing:
         featuresData = np.array(featuresData)
         featuresData = featuresData.reshape(1, -1)
 
-        trend = self.neuralNetwork.predict(featuresData)
-        reversal = trend != self.trend
-        self.trend = trend
-        self.lastValue = (trend, reversal)
+        if self.nOutputs == 2:
+            self.lastValue = self.neuralNetwork.predict(featuresData)
+            self.lastValue = (self.lastValue[0][0], self.lastValue[0][1])
+        else:
+            trend = self.neuralNetwork.predict(featuresData)
+            reversal = trend != self.trend
+            self.trend = trend
+            self.lastValue = (trend, reversal)
 
-        if onlineLearning and self.lastData is not None:
-            y = self.trendChecker.identifyAllTrends(np.array([self.lastData, data]))
-            y = np.array(y)
-            self.neuralNetwork.partial_fit(featuresData, y)
-
-        self.lastData = data
-
-        return (trend, reversal)
+        return self.lastValue

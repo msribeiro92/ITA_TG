@@ -17,9 +17,9 @@ class FeatureSelection:
         trainingData
     ):
         featuresArray = []
-        for i in range(len(initialData)):
+        for i in range(len(initialData)-3):
             for j in range(i):
-                featuresArray.append( MovingAverageCrossing(j+1, i+1))
+                featuresArray.append(MovingAverageCrossing(j+4, i+4))
 
         for feature in featuresArray:
             feature.setup(initialData)
@@ -28,14 +28,17 @@ class FeatureSelection:
         for data in trainingData:
             x_i = []
             for feature in featuresArray:
-                x_i.append(feature.onData(data)[0])
+                x_i.append(feature.onData(data)[1])
             X.append(x_i)
+        X = X[1:]
+        X = np.matrix(X)
 
-        y = self.trendChecker.identifyAllTrends(np.array(trainingData))
+        y = self.trendChecker.identifyAllReversions(np.array(trainingData))
+        y = np.array(y)
 
         model = LogisticRegression()
         rfe = RFE(model, numberOfFeatures)
-        fit = rfe.fit(X[1:], y)
+        fit = rfe.fit(X, y)
 
         selectedFeatures = []
         for i in range(len(featuresArray)):

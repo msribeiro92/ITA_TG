@@ -1,88 +1,93 @@
 class TrendChecker:
 
-    def checkTrend(self, rawData, trendPrediction):
-        if len(rawData) != len(trendPrediction):
-            raise(ValueError("Raw data and prediction have diferent sizes"))
-
-        lastPrediction = trendPrediction[0][0]
-        lastPredictionIndex = 0
-        contReversals = 0
-        contRightPredictions = 0
-
-        for i in range(len(rawData)):
-            # Look for next reversal prediction
-            if not trendPrediction[i][1]:  # not reversal
-                continue
-            else:
-                contReversals += 1
-                if ((rawData[i] > rawData[lastPredictionIndex])
-                    == lastPrediction):
-                    contRightPredictions += 1
-                lastPrediction = trendPrediction[i][0]
-                lastPredictionIndex = i
-
-        return float(contRightPredictions) / contReversals
-
-    def checkTrendNoReversal(self, rawData, trendPrediction):
-        if len(rawData)-1 != len(trendPrediction):
-            raise(ValueError("Raw data and prediction have diferent sizes"))
-
-        trends = self.identifyAllTrends(rawData)
-        cont = 0
-        for i in range(len(trends)):
-            if trends[i] == trendPrediction[i][0]:
-                cont += 1
-
-        return float(cont) / len(trends)
-
-    def checkSingleTrend(self, trendData, prediction):
-        return (trendData[len(trendData-1)] > trendData[0]) == prediction
-
-    def identifyTrend(self, trendData):
-        return trendData[len(trendData)-1] > trendData[0]
-
-    def identifyAllTrends(self, trendData):
+    def identifyAllTrends(self, rawData):
         trends = []
-        lastData = trendData[0]
-        for i in range(len(trendData)-1):
-            previousData = trendData[i]
-            currentData = trendData[i+1]
-            trend = currentData > previousData
+        lastTrend = False
+        for i in range(len(rawData)-1):
+            if rawData[i+1] > rawData[i]:
+                trend = True
+            elif rawData[i+1] < rawData[i]:
+                trend = False
+            else:
+                trend = lastTrend
+
+            lastTrend = trend
             trends.append(trend)
 
         return trends
 
+    def identifyAllReversions(self, trendData):
+        trends = self.identifyAllTrends(trendData)
+        reversions = [True]
+        for i in range(len(trends)-1):
+            reversions.append(trends[i] != trends[i+1])
+
+        return reversions
+
+    def checkPrediction(self, rawData, prediction):
+        if len(rawData)-1 != len(prediction):
+            raise(ValueError("Raw data and prediction have diferent sizes"))
+
+        trends = self.identifyAllTrends(rawData)
+        contT = 0
+        for i in range(len(trends)):
+            if trends[i] == prediction[i][0]:
+                contT += 1
+
+        reversals = self.identifyAllReversions(rawData)
+        contR = 0
+        for i in range(len(reversals)):
+            if reversals[i] == prediction[i][1]:
+                contR += 1
+
+        return float(contT) / len(trends), float(contR) / len(reversals)
+
+
     def checkPNL(self, rawData, trendPrediction):
-        if len(rawData)-1 != len(trendPrediction):
+        if len(rawData) != len(trendPrediction):
             raise(ValueError("Raw data and prediction have diferent sizes"))
 
         position = None
         pnl = 0
 
-        for i in range(len(trendPrediction)-2): # trades at at most one from the last
+        debug = []
+        for i in range(len(trendPrediction)): # trades at at most one from the last
             data = trendPrediction[i]
 
             if data[1]:
                 if position is None:
                     if data[0]:         # uptrend: buy
-                        pnl -= rawData[i+2]
+                        pnl -= rawData[i]
                         position = "long"
+                        debug.append(rawData[i])
                     else:              # downtrend: sell
-                        pnl += rawData[i+2]
+                        pnl += rawData[i]
                         position = "short"
+                        debug.append(rawData[i])
                 elif position == "long":
                     if not data[0]:    # downtrend: sell
-                        pnl += rawData[i+2]
-                        position = None
+                        pnl += 2*rawData[i]
+                        position = "short"
+                        debug.append(rawData[i])
                 else:                  # position == short
                     if data[0]:        # uptrend: buy
-                        pnl -= rawData[i+2]
-                        position = None
+                        pnl -= 2*rawData[i]
+                        position = "long"
+                        debug.append(rawData[i])
 
         # close opened position
         if position == "long":
             pnl += rawData[-1]
+            position = None
+            debug.append(rawData[i])
+
         elif position == "short":
             pnl -= rawData[-1]
+            position = None
+            debug.append(rawData[i])
+
+        diffs = []
+        for i in range(len(debug)-1):
+            diffs.append(abs(debug[i]-debug[i+1]))
 
         return pnl
