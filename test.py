@@ -98,7 +98,7 @@ class Test:
     ):
         dataArray = self.dataFrame["Close"]
         dataArray = np.array(dataArray)
-        initializationIndex = 20
+        initializationIndex = 40
         initialData = dataArray[:initializationIndex]
         trainingData = dataArray[initializationIndex:trainingIndex]
 
@@ -140,6 +140,7 @@ class Test:
                 )
             )
         )
+        answer.append(-dataArray[trainingIndex]+dataArray[finalIndex])
         answer.append(abs(dataArray[trainingIndex]-dataArray[finalIndex]))
 
         return answer
@@ -162,19 +163,21 @@ class Test:
     @staticmethod
     def testPrediction(
         testType="trend",
+        testMode="every",
         verbose=True,
         featureSelection=False,
         nFeatures=3,
         nOutputs=1,
         architecture=(15,15),
-        trainingIndex=86,
-        finalIndex=108
+        trainingIndex=106,
+        finalIndex=128
     ):
         mypath = '/home/marcel/TG/individual_stocks_5yr/'
         onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
         better = []
         equal = []
         worse = []
+        scores = []
         score = -1
         for f in onlyfiles:
             test = Test(f)
@@ -202,18 +205,19 @@ class Test:
                 elif testType == "PnL":
                     prediction = answer[nFeatures][1]
 
-                if prediction > max(values):
-                    better.append((f, answer))
-                elif prediction == max(values):
-                    equal.append((f, answer))
-                else:
-                    worse.append((f, answer))
-
-                score = (len(better) + len(equal)) * 1.0 / (len(better) + len(equal) + len(worse))
+                if testMode == "every":
+                    if prediction > max(values):
+                        better.append((f, answer))
+                    elif prediction == max(values):
+                        equal.append((f, answer))
+                    else:
+                        worse.append((f, answer))
+                else:  # testMode == "some"
+                    scores.append(sum(i < prediction for i in values))
             except:
                 continue
 
-        if verbose:
+        if testMode == "every" and verbose:
             print("Better: " + str(len(better)))
             print("Equal: " + str(len(equal)))
             print("Worse: " + str(len(worse)))
@@ -228,39 +232,48 @@ class Test:
             for r in worse:
                 print(r)
 
+        if testMode == "every":
+            score = (len(better) + len(equal)) * 1.0 / (len(better) + len(equal) + len(worse))
+        else:
+            score = sum(scores) * 1.0 /(nFeatures * len(scores))
+
         return score
 
     @staticmethod
-    def runMultipleTests(fileName, testType, trainingIndex, finalIndex):
+    def runMultipleTests(
+        fileName,
+        testType,
+        testMode,
+        trainingIndex,
+        finalIndex
+    ):
         start_time = time.time()
 
         f = open(fileName, 'w')
-        featureSelectionOptions = [True, False]
         numberOfFeatures = [3, 5, 7, 9]
         numberOfOutputs = [1, 2]
         architectures = [(10), (20), (10, 10), (20, 20)]
 
         answers = {}
-        for featureSelection in featureSelectionOptions:
-            for nFeatures in numberOfFeatures:
-                for nOutputs in numberOfOutputs:
-                    for architecture in architectures:
-                            key = str((
-                                featureSelection,
-                                nFeatures,
-                                nOutputs,
-                                architecture
-                            ))
-                            answers[key] = Test.testPrediction(
-                                testType=testType,
-                                verbose=False,
-                                featureSelection=featureSelection,
-                                nFeatures=nFeatures,
-                                nOutputs=nOutputs,
-                                architecture=architecture,
-                                trainingIndex=trainingIndex,
-                                finalIndex=finalIndex,
-                            )
+        for nFeatures in numberOfFeatures:
+            for nOutputs in numberOfOutputs:
+                for architecture in architectures:
+                        key = str((
+                            nFeatures,
+                            nOutputs,
+                            architecture
+                        ))
+                        answers[key] = Test.testPrediction(
+                            testType=testType,
+                            testMode=testMode,
+                            verbose=False,
+                            featureSelection=True,
+                            nFeatures=nFeatures,
+                            nOutputs=nOutputs,
+                            architecture=architecture,
+                            trainingIndex=trainingIndex,
+                            finalIndex=finalIndex,
+                        )
         sortedAns = sorted(answers.iteritems(), key=operator.itemgetter(1))
         f.write(fileName + "\n")
         f.write("Sorted Answers:\n")
@@ -269,6 +282,70 @@ class Test:
 
         f.write("--- %s seconds ---" % (time.time() - start_time))
 
+    @staticmethod
+    def fullClassifierTest(
+        nFeatures=3,
+        nOutputs=1,
+        architecture=(15,15),
+        trainingIndex=106,
+        finalIndex=128
+    ):
+        mypath = '/home/marcel/TG/individual_stocks_5yr/'
+        onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+
+        performance = {
+            "trend": [],
+            "reversal": [],
+            "PnL": [],
+            "BaH": 0,
+            "BSaH": 0,
+        }
+        for testType in ["trend", "reversal", "PnL"]:
+            performance[testType] = [0 for i in range(nFeatures)]
+
+        print performance
+        totalFiles = 0
+        for f in onlyfiles:
+            test = Test(f)
+            try:
+                answer = test.testIntelligentMovingAverageCrossing(
+                    featureSelection=True,
+                    nFeatures=nFeatures,
+                    nOutputs=nOutputs,
+                    architecture=architecture,
+                    trainingIndex=trainingIndex,
+                    finalIndex=finalIndex,
+                )
+
+                for testType in ["trend", "reversal", "PnL"]:
+                    if testType == "trend":
+                        prediction = answer[nFeatures][0][0]
+                    elif testType == "reversal":
+                        prediction = answer[nFeatures][0][1]
+                    elif testType == "PnL":
+                        prediction = answer[nFeatures][1]
+                        performance["BaH"] += prediction >= answer[nFeatures+1]
+                        performance["BSaH"] += prediction >= answer[nFeatures+2]
+
+                    for i in range(nFeatures):
+                        if testType == "trend":
+                            performance["trend"][i] += prediction >= answer[i][0][0]
+                        elif testType == "reversal":
+                            performance["reversal"][i] += prediction >= answer[i][0][1]
+                        elif testType == "PnL":
+                            performance["PnL"][i] += prediction >= answer[i][1]
+
+                totalFiles += 1
+            except:
+                continue
+
+        for testType in ["trend", "reversal", "PnL"]:
+            for i in range(nFeatures):
+                performance[testType][i] = performance[testType][i] * 1.0 / totalFiles
+        performance["BaH"] = performance["BaH"] * 1.0 / totalFiles
+        performance["BSaH"] = performance["BSaH"] * 1.0 / totalFiles
+
+        print performance
 #test = Test("AAL_data.csv")
 #test.testSampleData("IBM_data.csv")
 #test.testMovingAverageStremer()
@@ -276,9 +353,14 @@ class Test:
 #test.testFeatureSelection()
 #test.testReversals()
 
+
 Test.runMultipleTests(
     sys.argv[1],
     sys.argv[2],
-    int(sys.argv[3]),
-    int(sys.argv[4])
+    sys.argv[3],
+    106,#int(sys.argv[4]),
+    128#int(sys.argv[5])
 )
+"""
+Test.fullClassifierTest(nFeatures=9,nOutputs=1,architecture=(20))
+"""

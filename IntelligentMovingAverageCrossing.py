@@ -20,7 +20,7 @@ class IntelligentMovingAverageCrossing:
     ):
 
         self.neuralNetwork = MLPClassifier(
-            activation='relu',
+            activation='logistic',
             solver='lbfgs',
             alpha=1e-4,
             hidden_layer_sizes=architecture,
