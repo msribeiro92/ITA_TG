@@ -61,18 +61,9 @@ class Test:
         movingAverageCrossing  = MovingAverageCrossing(shortPeriod, longPeriod)
         movingAverageCrossing.setup(dataArray[:longPeriod])
 
-        longAverage = MovingAverageStreamer(longPeriod)
-        longAverage.setup(dataArray[:longPeriod])
-        shortAverage = MovingAverageStreamer(shortPeriod)
-        shortAverage.setup(dataArray[:longPeriod])
-
         predictionArray = [movingAverageCrossing.lastValue]
-        longAverageArray = [longAverage.lastValue]
-        shortAverageArray = [shortAverage.lastValue]
-        for data in dataArray[longPeriod:]:
+        for data in dataArray[longPeriod:finalIndex]:
             predictionArray.append(movingAverageCrossing.onData(data))
-            longAverageArray.append(longAverage.onData(data))
-            shortAverageArray.append(shortAverage.onData(data))
 
         trend = TrendChecker()
 
@@ -101,6 +92,8 @@ class Test:
         initializationIndex = 40
         initialData = dataArray[:initializationIndex]
         trainingData = dataArray[initializationIndex:trainingIndex]
+        if finalIndex == -1:
+            finalIndex = len(dataArray)-1
 
         intelligentMovingAverageCrossing = \
             IntelligentMovingAverageCrossing(
@@ -165,7 +158,7 @@ class Test:
         testType="trend",
         testMode="every",
         verbose=True,
-        featureSelection=False,
+        featureSelection=True,
         nFeatures=3,
         nOutputs=1,
         architecture=(15,15),
@@ -284,26 +277,32 @@ class Test:
 
     @staticmethod
     def fullClassifierTest(
+        fileName,
         nFeatures=3,
         nOutputs=1,
         architecture=(15,15),
-        trainingIndex=106,
-        finalIndex=128
+        trainingIndex=292,
+        finalIndex=314
     ):
+        start_time = time.time()
+
+        fi = open(fileName, 'w')
         mypath = '/home/marcel/TG/individual_stocks_5yr/'
         onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
         performance = {
             "trend": [],
+            "meanTrendAccuracy": 0,
             "reversal": [],
+            "meanReversalAccuracy": 0,
             "PnL": [],
+            "meanPnL": 0,
             "BaH": 0,
             "BSaH": 0,
         }
         for testType in ["trend", "reversal", "PnL"]:
             performance[testType] = [0 for i in range(nFeatures)]
 
-        print performance
         totalFiles = 0
         for f in onlyfiles:
             test = Test(f)
@@ -320,10 +319,13 @@ class Test:
                 for testType in ["trend", "reversal", "PnL"]:
                     if testType == "trend":
                         prediction = answer[nFeatures][0][0]
+                        performance["meanTrendAccuracy"] += prediction
                     elif testType == "reversal":
                         prediction = answer[nFeatures][0][1]
+                        performance["meanReversalAccuracy"] += prediction
                     elif testType == "PnL":
                         prediction = answer[nFeatures][1]
+                        performance["meanPnL"] += prediction
                         performance["BaH"] += prediction >= answer[nFeatures+1]
                         performance["BSaH"] += prediction >= answer[nFeatures+2]
 
@@ -342,18 +344,20 @@ class Test:
         for testType in ["trend", "reversal", "PnL"]:
             for i in range(nFeatures):
                 performance[testType][i] = performance[testType][i] * 1.0 / totalFiles
-        performance["BaH"] = performance["BaH"] * 1.0 / totalFiles
-        performance["BSaH"] = performance["BSaH"] * 1.0 / totalFiles
+        for result in ["BaH", "BSaH", "meanTrendAccuracy", "meanReversalAccuracy", "meanPnL"]:
+            performance[result] = performance[result] * 1.0 / totalFiles
 
-        print performance
+        fi.write(fileName + "\n")
+        fi.write(str(performance)+"\n")
+        fi.write("--- %s seconds ---" % (time.time() - start_time))
+
 #test = Test("AAL_data.csv")
 #test.testSampleData("IBM_data.csv")
 #test.testMovingAverageStremer()
 #print test.testIntelligentMovingAverageCrossing(featureSelection=True)
 #test.testFeatureSelection()
 #test.testReversals()
-
-
+"""
 Test.runMultipleTests(
     sys.argv[1],
     sys.argv[2],
@@ -362,5 +366,11 @@ Test.runMultipleTests(
     128#int(sys.argv[5])
 )
 """
-Test.fullClassifierTest(nFeatures=9,nOutputs=1,architecture=(20))
-"""
+Test.fullClassifierTest(
+    sys.argv[1],
+    nFeatures=7,
+    nOutputs=1,
+    architecture=(20,20),
+    trainingIndex=int(sys.argv[2]),
+    finalIndex=int(sys.argv[3])
+)

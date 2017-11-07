@@ -66,14 +66,13 @@ class IntelligentMovingAverageCrossing:
             f.setup(initialData)
 
         # train prediction
+        X = []
         for data in trainingData:
-            X = []
-            for data in trainingData:
-                x_i = []
-                for f in self.features:
-                    x_i.append(f.onData(data)[0])
-                X.append(x_i)
-            X = np.array(X[1:])
+            x_i = []
+            for f in self.features:
+                x_i.append(f.onData(data)[0])
+            X.append(x_i)
+        X = np.array(X[1:])
 
         if self.nOutputs == 2:
             y = []

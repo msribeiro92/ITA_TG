@@ -11,7 +11,7 @@ class MovingAverageCrossing:
         self.lastValue = (False, True)
 
     def setup(self, initialData):
-        if len(initialData) < min(self.shortPeriod, self.longPeriod):
+        if len(initialData) < self.longPeriod:
             raise(ValueError("Not enough initialization data."))
 
         self.shortAverage.setup(initialData)
