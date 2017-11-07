@@ -93,7 +93,7 @@ class Test:
         initialData = dataArray[:initializationIndex]
         trainingData = dataArray[initializationIndex:trainingIndex]
         if finalIndex == -1:
-            finalIndex = len(dataArray)-1
+            finalIndex = len(dataArray)
 
         intelligentMovingAverageCrossing = \
             IntelligentMovingAverageCrossing(
@@ -133,8 +133,8 @@ class Test:
                 )
             )
         )
-        answer.append(-dataArray[trainingIndex]+dataArray[finalIndex])
-        answer.append(abs(dataArray[trainingIndex]-dataArray[finalIndex]))
+        answer.append(-dataArray[trainingIndex]+dataArray[finalIndex-1])
+        answer.append(abs(dataArray[trainingIndex]-dataArray[finalIndex-1]))
 
         return answer
 
