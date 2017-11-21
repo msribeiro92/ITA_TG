@@ -20,7 +20,7 @@ class TestIndicator:
 
     def testIndicator(self, indicator, initializationIndex, trainingIndex, finalIndex):
         dataArray = self.dataFrame["Close"]
-
+        dataArray = np.array(dataArray)
         indicator.setup(dataArray[:indicator.getInitializationSize()])
 
         predictionArray = [indicator.lastValue]
@@ -254,7 +254,6 @@ class TestIndicator:
         for testType in ["trend", "reversal", "PnL"]:
             performance[testType] = [0 for i in range(nFeatures)]
 
-        print performance
         totalFiles = 0
         for f in onlyfiles:
             test = TestIndicator(f)
@@ -313,11 +312,12 @@ TestIndicator.runMultipleTests(
     128#int(sys.argv[5])
 )
 """
-Test.fullClassifierTest(
+TestIndicator.fullClassifierTest(
     sys.argv[1],
-    nFeatures=9,
+    indicatorType="MovingAverageConvergenceDivergence",
+    nFeatures=7,
     nOutputs=1,
-    architecture=(10,10),
+    architecture=(20),
     trainingIndex=int(sys.argv[2]),
     finalIndex=int(sys.argv[3])
 )

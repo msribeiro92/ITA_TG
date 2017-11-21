@@ -18,7 +18,7 @@ class HiLoActivator:
         self.movingAverage.setup(initialData[:-1])
 
         movingAverage = self.movingAverage.lastValue
-        lastClose = initialData[-1]
+        lastClose = initialData[len(initialData)-1]
 
         if movingAverage > lastClose:
             trend = True
@@ -33,7 +33,7 @@ class HiLoActivator:
         self.trend = trend
         self.lastValue = (trend, reversal)
 
-        self.movingAverage.onData(initialData[-1])
+        self.movingAverage.onData(lastClose)
 
     def onData(self, data):
         movingAverage = self.movingAverage.lastValue

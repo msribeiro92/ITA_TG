@@ -78,11 +78,11 @@ class FeatureSelection:
         initialData
     ):
         featuresArray = []
-        for i in range(len(initialData)-3):
-            for j in range(i):
-                for k in range(len(initialData)-i-3):
+        for i in range(0, len(initialData)-3, 3):
+            for j in range(0, i, 3):
+                for k in range(0, len(initialData)-i-4, 3):
                     featuresArray.append(
-                        MovingAverageConvergenceDivergence(j+4, i+4, k+4)
+                        MovingAverageConvergenceDivergence(j+4, i+4, k+1)
                     )
 
         return featuresArray

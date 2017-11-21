@@ -368,9 +368,9 @@ Test.runMultipleTests(
 """
 Test.fullClassifierTest(
     sys.argv[1],
-    nFeatures=7,
+    nFeatures=3,
     nOutputs=1,
-    architecture=(20,20),
+    architecture=(10,10),
     trainingIndex=int(sys.argv[2]),
     finalIndex=int(sys.argv[3])
 )
