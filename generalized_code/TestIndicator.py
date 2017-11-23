@@ -124,7 +124,7 @@ class TestIndicator:
             test = TestIndicator(f)
             try:
                 answer = test.testIntelligentIndicator(
-                    indicatorType="MovingAverageCrossing",
+                    indicatorType=indicatorType,
                     nFeatures=nFeatures,
                     nOutputs=nOutputs,
                     architecture=architecture,
@@ -314,10 +314,10 @@ TestIndicator.runMultipleTests(
 """
 TestIndicator.fullClassifierTest(
     sys.argv[1],
-    indicatorType="MovingAverageConvergenceDivergence",
-    nFeatures=7,
+    indicatorType="HiLoActivator",
+    nFeatures=5,
     nOutputs=1,
-    architecture=(20),
+    architecture=(20,20),
     trainingIndex=int(sys.argv[2]),
     finalIndex=int(sys.argv[3])
 )
